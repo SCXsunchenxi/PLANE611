@@ -19,7 +19,7 @@ def load_data(plane, strain):
      :param strain: choose strain 30-35
     '''
 
-    print('Plan ' + plane + ', Strain ' + strain)
+    print('Plane ' + plane + ', Strain ' + strain)
 
     dir = '../data_per_plane/'
     data = pd.read_csv(dir + plane + '_data.csv', encoding='utf-8')
@@ -200,3 +200,4 @@ if __name__ == "__main__":
 
     with open('../result/results_basic_regression_model.pkl', 'wb') as file:
         pickle.dump(results, file)
+    print('[******]all methods done!')
