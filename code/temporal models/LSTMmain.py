@@ -68,9 +68,9 @@ def data_extract(data, strain, test_number):
 
 def training(plane, strain, test_number, dir, fold, training_epochs, train_dropout_prob, hidden_dim, fc_dim, key,
              model_path,
-             learning_rate=[1e-5, 2e-2], lr_decay=2000, ):
+             learning_rate=[1e-5, 2e-2], lr_decay=2000, earlystopping=10):
     # load data
-    data = load_data(plane=plane, strain=strain, dir=dir )
+    data = load_data(plane=plane, strain=strain, dir=dir)
     if test_number == None:
         number_train_batches = 20000
     else:
@@ -80,24 +80,28 @@ def training(plane, strain, test_number, dir, fold, training_epochs, train_dropo
 
     # model built
     lstm = LSTM(input_dim, output_dim, hidden_dim, fc_dim, key)
-    MSEloss, y_pre, y_label = lstm.get_cost_acc()
+    loss, y_pre, y_label = lstm.get_cost_acc()
     lr = learning_rate[0] + tf.train.exponential_decay(learning_rate[1],
                                                        lstm.step,
                                                        lr_decay,
                                                        1 / np.e)
-    optimizer = tf.train.AdamOptimizer(learning_rate=lr).minimize(MSEloss)
-    init = tf.global_variables_initializer()
-    saver = tf.train.Saver()
+
+    optimizer = tf.train.AdamOptimizer(learning_rate=lr).minimize(loss)
     best_valid_loss = 1e10
 
+    init = tf.global_variables_initializer()
+    saver = tf.train.Saver()
+
+    EP=0
     # train
     with tf.Session() as sess:
         sess.run(init)
+
         for epoch in range(training_epochs):
             # Loop over all batches
             for i in range(number_train_batches):
                 # batch_xs is [number of patients x sequence length x input dimensionality]
-                batch_xs, batch_ys = data_extract(data, strain,test_number)
+                batch_xs, batch_ys = data_extract(data, strain, test_number)
                 step = epoch * number_train_batches + i
                 sess.run(optimizer,
                          feed_dict={lstm.input: batch_xs, lstm.labels: batch_ys, lstm.keep_prob: train_dropout_prob,
@@ -106,27 +110,35 @@ def training(plane, strain, test_number, dir, fold, training_epochs, train_dropo
 
             # valid
 
-            batch_xs, batch_ys = data_extract(data, strain,test_number)
+            batch_xs, batch_ys = data_extract(data, strain, test_number)
             loss, y_pre, y_true = sess.run(lstm.get_cost_acc(), feed_dict={lstm.input: batch_xs,
-                                                                  lstm.labels: batch_ys,
-                                                                  lstm.keep_prob: train_dropout_prob})
+                                                                           lstm.labels: batch_ys,
+                                                                           lstm.keep_prob: train_dropout_prob})
 
             print("validation MSE = {:.3f}".format(loss))
             MAE = metrics.mean_absolute_error(y_pre, y_true)
             print("validation MAE = {:.3f}".format(MAE))
             print('epoch ' + str(epoch) + ' done........................')
             if (loss <= best_valid_loss):
+                EP = 0
+                best_valid_loss=loss
                 print("[*] Best loss so far! ")
                 saver.save(sess, model_path + 'model' + str(fold) + '/')
                 print("[*] Model saved at", model_path + 'model' + str(fold) + '/', flush=True)
+            else:
+                EP=EP+1
+                if EP>earlystopping:
+                    print("Early stopping! Fold " + str(fold) + " training is over!")
+                    saver.save(sess, model_path + 'model' + str(fold) + '/')
+                    print("[******] Model saved at", model_path + 'model' + str(fold) + '/', flush=True)
 
         print("Fold " + str(fold) + " training is over!")
         saver.save(sess, model_path + 'model' + str(fold) + '/')
         print("[******] Model saved at", model_path + 'model' + str(fold) + '/', flush=True)
 
 
-def testing(plane, strain, test_number, dir, hidden_dim, fc_dim, key, model_path):
-    data = load_data(plane=plane, strain=strain,dir=dir)
+def testing(plane, strain, test_number, dir, hidden_dim, fc_dim, key, model_path,fold):
+    data = load_data(plane=plane, strain=strain, dir=dir)
 
     input_dim = 30
     output_dim = 1
@@ -136,21 +148,21 @@ def testing(plane, strain, test_number, dir, hidden_dim, fc_dim, key, model_path
 
     saver = tf.train.Saver()
     with tf.Session() as sess:
-        saver.restore(sess, model_path+'model1/')
+        saver.restore(sess, model_path + 'model'+str(fold)+'/')
 
         batch_xs, batch_ys = data_extract(data, strain, test_number)
         loss, y_pre, y_true = sess.run(lstm_load.get_cost_acc(), feed_dict={lstm_load.input: batch_xs,
-                                                                                    lstm_load.labels: batch_ys, \
-                                                                                    lstm_load.keep_prob: test_dropout_prob})
+                                                                            lstm_load.labels: batch_ys, \
+                                                                            lstm_load.keep_prob: test_dropout_prob})
 
-        MAE= metrics.mean_absolute_error(y_pre, y_true)
+        MAE = metrics.mean_absolute_error(y_pre, y_true)
         print("Test Loss = {:.3f}".format(loss))
         print("validation MAE = {:.3f}".format(MAE))
 
 
-
-def main(training_mode, plane, strain, test_number, data_path,fold, learning_rate, lr_decay, training_epochs, dropout_prob, hidden_dim, fc_dim,
-         model_path):
+def main(training_mode, plane, strain, test_number, data_path, fold, learning_rate, lr_decay, training_epochs,
+         dropout_prob, hidden_dim, fc_dim,
+         model_path,earlystopping):
     """
     :param training_mode:  1 train，0 test，
     :param plane:  P123-P127，
@@ -179,15 +191,17 @@ def main(training_mode, plane, strain, test_number, data_path,fold, learning_rat
         model_path = str(model_path)
         training(plane, strain, test_number, path, fold, training_epochs, dropout_prob, hidden_dim, fc_dim,
                  training_mode, model_path,
-                 learning_rate, lr_decay)
+                 learning_rate, lr_decay,earlystopping)
 
     # test
     elif training_mode == 0:
         hidden_dim = int(hidden_dim)
         fc_dim = int(fc_dim)
         model_path = str(model_path)
-        testing(plane, strain, test_number, path, hidden_dim, fc_dim, training_mode, model_path)
+        testing(plane, strain, test_number, path, hidden_dim, fc_dim, training_mode, model_path,fold)
+
 
 if __name__ == "__main__":
-    main(training_mode=1, plane='P123', strain='30', test_number=0, data_path='../../data_per_plane/',fold=1, learning_rate=[1e-5, 2e-2], lr_decay=2000,
-         training_epochs=15, dropout_prob=0.25, hidden_dim=64, fc_dim=32, model_path='save_LSTM/')
+    main(training_mode=1, plane='P123', strain='30', test_number=0, data_path='../../data_per_plane/', fold=1,
+         learning_rate=[1e-5, 2e-2], lr_decay=2000,
+         training_epochs=15, dropout_prob=0.25, hidden_dim=64, fc_dim=32, model_path='save_LSTM/',earlystopping=10)
