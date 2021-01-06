@@ -86,6 +86,24 @@ class MLP(pt.nn.Module):
         dout = self.dropout(dout)
         return self.fc3(dout)
 
+#  序列模型 SHAP解释用
+# class MLP(pt.nn.Module):
+#     def __init__(self):
+#         super(MLP, self).__init__()
+#         self.fc=pt.nn.Sequential(
+#             pt.nn.Linear(30, 256),
+#             pt.nn.Sigmoid(),
+#             pt.nn.Dropout(0.1),
+#             pt.nn.Linear(256, 64),
+#             pt.nn.Sigmoid(),
+#             pt.nn.Dropout(0.1),
+#             pt.nn.Linear(64, 6),
+#         )
+#
+#     def forward(self, input):
+#         dout = self.fc(input)
+#         return dout
+
 def train_model(plane, epoch,batch_size,early_stop,continue_train):
     # load data
     X, Y = load_data(plane)
@@ -156,7 +174,7 @@ def train_model(plane, epoch,batch_size,early_stop,continue_train):
     plt.plot(x_epoch, loss_list)
     plt.xlabel('Epoch')
     plt.ylabel('MSE')
-    plt.savefig('MLP_train.jpg', dpi=300)
+    plt.savefig('MLP_train_loss'+str(plane)+'.jpg', dpi=300)
 
     return best_acc
 
@@ -249,24 +267,24 @@ def train_model_uncertainty(plane, epoch,batch_size,early_stop,continue_train,un
     plt.plot(x_epoch, loss_list)
     plt.xlabel('Epoch')
     plt.ylabel('MSE')
-    plt.savefig('MLP_train_loss.jpg', dpi=300)
+    plt.savefig('MLP_train_loss'+str(plane)+'.jpg', dpi=300)
     plt.clf()
     # uncertainty fig
     x_epoch=[x for x in range(len(uncertainty_list))]
     plt.plot(x_epoch, uncertainty_list)
     plt.xlabel('Epoch')
     plt.ylabel('Uncertainty')
-    plt.savefig('MLP_train_uncertainty.jpg', dpi=300)
-
+    plt.savefig('MLP_train_uncertainty'+str(plane)+'.jpg', dpi=300)
+    plt.clf()
     return best_acc
 
-def test(X,Y):
+def test(X,Y,plane):
     # load data
     X=pt.tensor(X).float()
     Y= pt.tensor(Y).float()
 
     # load model
-    load_model=pt.load("save_MLP_model/mlp_model.pt")
+    load_model=pt.load("save_MLP_model/mlp_model_plane" + str(plane) + ".pt")
     lossfunc = pt.nn.MSELoss()
 
     # test
@@ -295,6 +313,11 @@ if __name__ == "__main__":
         PLANE_MSE.append(beast_acc)
 
     print("[***] MES of 7 planes is: " + str(PLANE_MSE))
+
+    # test
+    # X, Y = load_data('P123')
+    # test(X,Y,'P123')
+
 
 
 
