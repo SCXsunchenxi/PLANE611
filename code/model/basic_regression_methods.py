@@ -21,7 +21,7 @@ def load_data(plane, strain):
 
     print('Plane ' + plane + ', Strain ' + strain)
 
-    dir = '../data_per_plane/'
+    dir = '../../data_per_plane/'
     data = pd.read_csv(dir + plane + '_data.csv', encoding='utf-8')
     # M = pd.read_csv(dir+plane+'_mean.csv', encoding='utf-8')
     # S = pd.read_csv(dir+plane+'_sd.csv', encoding='utf-8')
