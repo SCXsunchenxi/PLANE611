@@ -17,40 +17,57 @@ def load_data(plane):
 
     print('[***] Plane ' + plane)
 
-    dir = '../../data_per_plane/'
+    dir = '../../data_per_plane_new/'
     data = pd.read_csv(dir + plane + '_data.csv', encoding='utf-8')
     # M = pd.read_csv(dir+plane+'_mean.csv', encoding='utf-8')
     # S = pd.read_csv(dir+plane+'_sd.csv', encoding='utf-8')
 
-    X = np.asarray(data.get(data.columns.values.tolist()[1:31]))
-    Y = np.asarray(data.get(data.columns.values.tolist()[31:]))
+    X = np.asarray(data.get(data.columns.values.tolist()[:30]))
+    Y = np.asarray(data.get(data.columns.values.tolist()[30:]))
 
     print('[***] Data is loaded')
 
     return X, Y
 
+# class MLP(pt.nn.Module):
+#     def __init__(self):
+#         super(MLP, self).__init__()
+#         self.fc1 = pt.nn.Linear(30, 256)
+#         self.fc2 = pt.nn.Linear(256, 64)
+#         self.fc3 = pt.nn.Linear(64, 6)
+#         self.dropout = pt.nn.Dropout(p=0.1)
+#
+#     def forward(self, input):
+#         dout = pt.sigmoid(self.fc1(input))
+#         dout = self.dropout(dout)
+#         dout = pt.sigmoid(self.fc2(dout))
+#         dout = self.dropout(dout)
+#         return self.fc3(dout)
+
 class MLP(pt.nn.Module):
     def __init__(self):
         super(MLP, self).__init__()
-        self.fc1 = pt.nn.Linear(30, 256)
-        self.fc2 = pt.nn.Linear(256, 64)
-        self.fc3 = pt.nn.Linear(64, 6)
-        self.dropout = pt.nn.Dropout(p=0.1)
+        self.fc=pt.nn.Sequential(
+            pt.nn.Linear(30, 256),
+            pt.nn.Sigmoid(),
+            pt.nn.Dropout(0.1),
+            pt.nn.Linear(256, 64),
+            pt.nn.Sigmoid(),
+            pt.nn.Dropout(0.1),
+            pt.nn.Linear(64, 6),
+        )
 
     def forward(self, input):
-        dout = pt.sigmoid(self.fc1(input))
-        dout = self.dropout(dout)
-        dout = pt.sigmoid(self.fc2(dout))
-        dout = self.dropout(dout)
-        return self.fc3(dout)
+        dout = self.fc(input)
+        return dout
 
 if __name__ == "__main__":
 
-    plane='P123'
+    plane='P125'
     X, Y = load_data(plane)
     X=pt.tensor(X).float()
 
-    model=pt.load("save_MLP_model/mlp_model_plane" + str(plane) + ".pt")
+    model=pt.load("save_MLP_new_model/mlp_model_plane" + str(plane) + ".pt")
 
     # shap.initjs()
     explainer = shap.DeepExplainer(model,X)
