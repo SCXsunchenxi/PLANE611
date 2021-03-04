@@ -1,6 +1,4 @@
-import os
 import pandas as pd
-import sys
 pd.set_option('display.max_columns', None)
 import pickle
 import matplotlib.pyplot as plt
@@ -294,12 +292,12 @@ def test(X,Y,plane):
 
 if __name__ == "__main__":
     # param
-    plane=['P123','P124','P125','P126','P127']
+    plane=['P124','P125','P126','P127']
     epoch=500
     batch_size=128
     early_stop=5
     continue_train=0
-    uncertainty=1
+    uncertainty=0
     uncertainty_model_number=5
 
     PLANE_MSE=[]
@@ -312,10 +310,10 @@ if __name__ == "__main__":
             beast_acc=train_model(p, epoch, batch_size, early_stop, continue_train)
         PLANE_MSE.append(beast_acc)
 
-    print("[***] MES of 7 planes is: " + str(PLANE_MSE))
+    print("[***] MES of 5 planes is: " + str(PLANE_MSE))
 
     # test
-    # X, Y = load_data('P123')
+    # X, CY = load_data('P123')
     # test(X,Y,'P123')
 
 
